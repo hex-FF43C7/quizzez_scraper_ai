@@ -1,4 +1,5 @@
 import requests
+import json
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -10,20 +11,24 @@ class OllamaClient:
     def __init__(self, ollama_url):
         self.ollama_url = ollama_url
 
-    def send_question(self, question_and_answers):
-        try:
-            # Prepare the payload
-            payload = {
-                "question": question_and_answers[0],
-                "options": question_and_answers[1]
-            }
-            # Send the request to the Ollama container
-            response = requests.post(self.ollama_url, json=payload)
-            response.raise_for_status()  # Raise an error for bad responses
-            return response.json()  # Return the parsed JSON response
-        except Exception as e:
-            print(f"Error communicating with Ollama container: {e}")
-            return None
+    def send_question(self, question_and_answers: list, model="phi4"):
+        url = self.ollama_url
+        headers = {"Content-Type": "application/json"}
+
+        answers = '\n'.join([f"answer{k}: {v}" for k, v in question_and_answers[1].items()])
+
+        print(f"""what is the correct answer to the question: "{str(question_and_answers[0])}" with options: \n{answers}\nplease respond with the number of the answer""")
+
+        data = {
+            "model": model,
+            "prompt": f"""what is the correct answer to the question: "{str(question_and_answers[0])}" with options: \n{answers}\nplease respond with the number of the answer""",
+            "stream": False
+        }
+        response = requests.post(url, headers=headers, data=json.dumps(data))
+        if response.status_code == 200:
+            return response.json()['response']
+        else:
+            return f"Error: {response.status_code} - {response.text}"
 
 
 class QuizizzScraper:
@@ -91,13 +96,20 @@ class QuizizzScraper:
 
 
 if __name__ == "__main__":
+
     GAMECODE = "092883"
     NAME = "Andrew W100"
     DRIVER_PATH = r'/Users/andrewwortmann/Documents/quizzez_scraper/chromedriver-mac-x64/chromedriver'
-    OLLAMA_URL = "http://localhost:11434/answer"
+    OLLAMA_URL = "http://localhost:11434/api/generate"
 
     ollama_client = OllamaClient(OLLAMA_URL)
     scraper = QuizizzScraper(GAMECODE, NAME, DRIVER_PATH, ollama_client)
+
+    prompt = ["what are the first 3 letters of the alphabet?", {0: "abc", 1: "bfr", 2: "cjj"}]
+    response_text = ollama_client.send_question(prompt, model="tinyllama")
+    print(response_text)
+
+    time.sleep(5000)
 
     try:
         scraper.login()
