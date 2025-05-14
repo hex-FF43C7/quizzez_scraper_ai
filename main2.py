@@ -36,6 +36,19 @@ class OllamaClient:
         else:
             return f"Error: {response.status_code} - {response.text}"
 
+    def test_model(self, model):
+        prompt = ["what are the first 3 letters of the alphabet?", {0: "abc", 1: "bfr", 2: "cjj"}]
+        response_text = ollama_client.send_question(prompt)
+        print(response_text)
+
+        prompt = ["what tool would you use to remove unwanted pixels from the side of an image", {0: "select", 1: "crop", 2: "paint"}]
+        response_text = ollama_client.send_question(prompt)
+        print(response_text)
+
+        prompt = ["wich is a video format", {0: ".flac", 1: ".mp4", 2: ".mp3", 3: ".png"}]
+        response_text = ollama_client.send_question(prompt)
+        print(response_text)
+
 
 class QuizizzScraper:
     def __init__(self, game_code, name, driver_path, ollama_client):
@@ -88,7 +101,7 @@ class QuizizzScraper:
             option_button = self.driver.find_element(By.CSS_SELECTOR, f"button[data-cy='option-{answer}']")
             option_button.click()
         except Exception as e:
-            print(f"Error selecting answer {answer}: {e}")
+            raise Exception(f"Error selecting answer {answer}: {e}")
 
     def _option_exists(self, index):
         try:
@@ -111,18 +124,6 @@ if __name__ == "__main__":
     ollama_client = OllamaClient(OLLAMA_URL)
     scraper = QuizizzScraper(GAMECODE, NAME, DRIVER_PATH, ollama_client)
 
-    # prompt = ["what are the first 3 letters of the alphabet?", {0: "abc", 1: "bfr", 2: "cjj"}]
-    # response_text = ollama_client.send_question(prompt)
-    # print(response_text)
-
-    # prompt = ["what tool would you use to remove unwanted pixels from the side of an image", {0: "select", 1: "crop", 2: "paint"}]
-    # response_text = ollama_client.send_question(prompt)
-    # print(response_text)
-
-    # prompt = ["wich is a video format", {0: ".flac", 1: ".mp4", 2: ".mp3", 3: ".png"}]
-    # response_text = ollama_client.send_question(prompt)
-    # print(response_text)
-
     try:
         scraper.login()
         for _ in range(5):
@@ -135,8 +136,7 @@ if __name__ == "__main__":
                 print(f"Ollama selected option: {selected_option}")
                 scraper.select_answer(selected_option)
             else:
-                print("Failed to get a valid response from Ollama.")
-                print("Ollama response:", selected_option)
+                raise Exception(f"Failed to get a valid response from Ollama: {selected_option}")
     except Exception as e:
         print(f"An error occurred: {e}")
     finally:
