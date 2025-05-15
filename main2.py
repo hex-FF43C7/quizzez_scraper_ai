@@ -4,6 +4,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import *
 import time
 import re
 
@@ -17,13 +18,13 @@ class OllamaClient:
         headers = {"Content-Type": "application/json"}
 
         answers = '\n'.join([f"answer{k}: {v}" for k, v in question_and_answers[1].items()])
-        complex_prompt = f"""what is the correct answer to the question: "{str(question_and_answers[0])}" with options: \n{answers}\nplease respond with just the title of the answer (ex: answer0, answer1, answer2, answer3, etc)"""
+        template = f"""what is the correct answer to the question: "{str(question_and_answers[0])}" with options: \n{answers}\nplease respond with just the title of the answer (ex: answer0, answer1, answer2, answer3, etc)"""
 
-        # print(complex_prompt)
+        # print(template)
 
         data = {
             "model": model,
-            "prompt": complex_prompt,
+            "prompt": template,
             "stream": False
         }
         response = requests.post(url, headers=headers, data=json.dumps(data))
@@ -32,9 +33,9 @@ class OllamaClient:
             for i, (k, v) in enumerate(question_and_answers[1].items()):
                 if re.search(rf"(answer{k})|({v})", response.text):
                     return int(k)
-            return f"couldnt find opiton in {response.text}"
+            return Exception(f"couldnt find any opiton in {response.text}")
         else:
-            return f"Error: {response.status_code} - {response.text}"
+            return Exception(f"Error: {response.status_code} - {response.text}")
 
     def test_model(self, model):
         prompt = ["what are the first 3 letters of the alphabet?", {0: "abc", 1: "bfr", 2: "cjj"}]
@@ -78,18 +79,26 @@ class QuizizzScraper:
 
     def get_q_screen(self):
         # Wait for the question text to appear
-        WebDriverWait(self.driver, 20).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-cy='text-container'] p[style='display:inline']"))
-        )
-        time.sleep(1)  # Covers a little bit of the loading time
-        question = self.driver.find_element(By.CSS_SELECTOR, "div[data-cy='text-container'] p[style='display:inline']")
+        try:
+            WebDriverWait(self.driver, 20).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-cy='text-container'] p[style='display:inline']"))
+            )
+            print("lhehaoiduhfaiuoewpiub;fha;dhpauh[hf;en;audufa;]")
+            time.sleep(1)  # Covers a little bit of the loading time
+            question = self.driver.find_element(By.CSS_SELECTOR, "div[data-cy='text-container'] p[style='display:inline']")
+        except TimeoutException:
+            question = self.driver.find_element(By.CSS_SELECTOR, "div.question-text-color")
+        
         question_and_answer = [question.text, {}]
 
         # Retrieve options
         answer = 0
         while self._option_exists(answer):
             option_button = self.driver.find_element(By.CSS_SELECTOR, f"button[data-cy='option-{answer}']")
-            option_text = option_button.find_element(By.CSS_SELECTOR, "p[style='display:inline']").text
+            try: 
+                option_text = option_button.find_element(By.CSS_SELECTOR, "p[style='display:inline']").text
+            except NoSuchElementException:
+                option_text = option_button.text
             question_and_answer[1][answer] = option_text
             answer += 1
 
@@ -113,11 +122,33 @@ class QuizizzScraper:
     def quit(self):
         self.driver.quit()
 
+    def _is_end_screen(self):
+        try:
+            try:
+                skipsum = self.driver.find_element(By.CSS_SELECTOR, 'div[data-cy="skip-summary"]')
+                skipsum.click()
+            except:
+                pass
+            self.driver.find_element(By.CSS_SELECTOR, 'div[data-cy="stat-partial-container"]')
+
+            return True
+        except:
+            return False
+
+    def __next__(self):
+        if self._is_end_screen():
+            raise StopIteration
+        else:
+            return self.get_q_screen()
+    
+    def __iter__(self):
+        return self
+
 
 if __name__ == "__main__":
 
-    GAMECODE = "148470"
-    NAME = "Andrew W2"
+    GAMECODE = "810168"
+    NAME = "Andrew W11"
     DRIVER_PATH = r'/Users/andrewwortmann/Documents/quizzez_scraper/chromedriver-mac-x64/chromedriver'
     OLLAMA_URL = "http://localhost:11434/api/generate"
 
@@ -126,19 +157,19 @@ if __name__ == "__main__":
 
     try:
         scraper.login()
-        for _ in range(5):
-            q_screen = scraper.get_q_screen()
+        for q_screen in scraper:
             print("Question and options:", q_screen)
 
-            # Send the question and options to the Ollama container
             selected_option = ollama_client.send_question(q_screen)
-            if "error" not in selected_option:
+            if selected_option:
                 print(f"Ollama selected option: {selected_option}")
                 scraper.select_answer(selected_option)
+                time.sleep(10) # Wait for the next question to load
             else:
                 raise Exception(f"Failed to get a valid response from Ollama: {selected_option}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"----\nAn error occurred: {e}")
     finally:
+        print('quitting')
         scraper.quit()
         print('dead')
