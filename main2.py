@@ -18,7 +18,7 @@ class OllamaClient:
         headers = {"Content-Type": "application/json"}
 
         answers = '\n'.join([f"answer{k}: {v}" for k, v in question_and_answers[1].items()])
-        template = f"""what is the correct answer to the question: "{str(question_and_answers[0])}" with options: \n{answers}\nplease respond with just the title of the answer (ex: answer0, answer1, answer2, answer3, etc)"""
+        template = f"""What is the correct answer to the question or fill in the blank if there is one: "{str(question_and_answers[0])}" with options: \n{answers}\nPlease respond with just the title of the answer (ex: answer0, answer1, answer2, answer3, etc)"""
 
         # print(template)
 
@@ -33,9 +33,9 @@ class OllamaClient:
             for i, (k, v) in enumerate(question_and_answers[1].items()):
                 if re.search(rf"(answer{k})|({v})", response.text):
                     return int(k)
-            return Exception(f"couldnt find any opiton in {response.text}")
+            raise Exception(f"couldnt find any opiton in {response.text}")
         else:
-            return Exception(f"Error: {response.status_code} - {response.text}")
+            raise Exception(f"Error: {response.status_code} - {response.text}")
 
     def test_model(self, model):
         prompt = ["what are the first 3 letters of the alphabet?", {0: "abc", 1: "bfr", 2: "cjj"}]
@@ -80,10 +80,10 @@ class QuizizzScraper:
     def get_q_screen(self):
         # Wait for the question text to appear
         try:
-            WebDriverWait(self.driver, 20).until(
+            WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-cy='text-container'] p[style='display:inline']"))
             )
-            print("lhehaoiduhfaiuoewpiub;fha;dhpauh[hf;en;audufa;]")
+            # print("lhehaoiduhfaiuoewpiub;fha;dhpauh[hf;en;audufa;]")
             time.sleep(1)  # Covers a little bit of the loading time
             question = self.driver.find_element(By.CSS_SELECTOR, "div[data-cy='text-container'] p[style='display:inline']")
         except TimeoutException:
@@ -147,8 +147,8 @@ class QuizizzScraper:
 
 if __name__ == "__main__":
 
-    GAMECODE = "810168"
-    NAME = "Andrew W11"
+    GAMECODE = "051192"
+    NAME = "AndrewBotV1"
     DRIVER_PATH = r'/Users/andrewwortmann/Documents/quizzez_scraper/chromedriver-mac-x64/chromedriver'
     OLLAMA_URL = "http://localhost:11434/api/generate"
 
@@ -164,7 +164,7 @@ if __name__ == "__main__":
             if selected_option:
                 print(f"Ollama selected option: {selected_option}")
                 scraper.select_answer(selected_option)
-                time.sleep(10) # Wait for the next question to load
+                time.sleep(7) # Wait for the next question to load
             else:
                 raise Exception(f"Failed to get a valid response from Ollama: {selected_option}")
     except Exception as e:
