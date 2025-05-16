@@ -29,11 +29,13 @@ class OllamaClient:
         }
         response = requests.post(url, headers=headers, data=json.dumps(data))
         if response.status_code == 200:
-            # return response.json()['response']
-            for i, (k, v) in enumerate(question_and_answers[1].items()):
-                if re.search(rf"({k})|({v})", response.text):
-                    return int(k)
-            raise Exception(f"couldnt find any opiton in {response.text}")
+            if response.text:
+                for i, (k, v) in enumerate(question_and_answers[1].items()):
+                    if re.search(rf"(answer{k})|({v})", response.text):
+                        return int(k)
+                raise Exception(f"couldnt find any opiton in {response.text}")
+            else:
+                raise Exception('No responce from ollama')
         else:
             raise Exception(f"Error: {response.status_code} - {response.text}")
 
