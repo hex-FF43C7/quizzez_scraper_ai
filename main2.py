@@ -31,7 +31,7 @@ class OllamaClient:
         if response.status_code == 200:
             # return response.json()['response']
             for i, (k, v) in enumerate(question_and_answers[1].items()):
-                if re.search(rf"(answer{k})|({v})", response.text):
+                if re.search(rf"({k})|({v})", response.text):
                     return int(k)
             raise Exception(f"couldnt find any opiton in {response.text}")
         else:
